@@ -1,4 +1,4 @@
-import 'dart:html' as html; // for audio playback on web
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import '../services/livekit_service.dart';
 import '../services/api_service.dart';
@@ -9,25 +9,43 @@ class VoiceProvider extends ChangeNotifier {
 
   bool isConnected = false;
   bool isListening = false;
-  String lastResponse = "";
-  String? lastAudioUrl;
+  bool agentSpeaking = false;
 
-  // camera feed
+  String lastResponse = "";
+
+  // Camera feed (Web)
   html.VideoElement? cameraElement;
   bool cameraReady = false;
 
   VoiceProvider() {
+    // LiveKit connection state
     _lk.onConnectionChange = (connected) {
       isConnected = connected;
-      if (!connected) isListening = false;
+      if (!connected) {
+        isListening = false;
+        agentSpeaking = false;
+      }
       notifyListeners();
     };
 
-    _initCameraFeed();   // auto-start camera
+    // Agent audio state
+    _lk.onAgentSpeaking = () {
+      agentSpeaking = true;
+      lastResponse = "ALAN is speaking…";
+      notifyListeners();
+    };
+
+    _lk.onAgentStopped = () {
+      agentSpeaking = false;
+      lastResponse = "";
+      notifyListeners();
+    };
+
+    _initCameraFeed();
   }
 
   // ----------------------------------------------------------
-  // CAMERA FEED
+  // CAMERA FEED (Web only)
   // ----------------------------------------------------------
   Future<void> _initCameraFeed() async {
     try {
@@ -49,9 +67,12 @@ class VoiceProvider extends ChangeNotifier {
   }
 
   // ----------------------------------------------------------
-  // LiveKit mic control
+  // LiveKit config
   // ----------------------------------------------------------
-  void setConfig({required String url, required String token}) {
+  void setConfig({
+    required String url,
+    required String token,
+  }) {
     _lk.setConfig(url: url, token: token);
   }
 
@@ -61,41 +82,21 @@ class VoiceProvider extends ChangeNotifier {
     }
   }
 
+  // ----------------------------------------------------------
+  // REAL mic control (NO mock backend loop)
+  // ----------------------------------------------------------
   Future<void> toggleMic() async {
     if (!isConnected) await connect();
+
     await _lk.toggleMic();
     isListening = _lk.micEnabled;
-    notifyListeners();
 
-    if (isListening) {
-      // When mic turns on, backend listens for voice → STT → AI reply
-      _startVoiceLoop();
-    }
+    notifyListeners();
   }
 
   // ----------------------------------------------------------
-  // BACKEND VOICE LOOP
+  // Text-only request (kept intentionally)
   // ----------------------------------------------------------
-  Future<void> _startVoiceLoop() async {
-    // 1) Ask backend for AI voice response:
-    final res = await _api.sendVoiceRequest(
-      sessionId: "voice-session",
-    );
-
-    lastResponse = res["text"] ?? "";
-    lastAudioUrl = res["audio_url"];
-
-    notifyListeners();
-
-    // 2) Play TTS audio
-    if (lastAudioUrl != null) {
-      final audio = html.AudioElement(lastAudioUrl!)
-        ..play()
-        ..volume = 1.0;
-    }
-  }
-
-  // manual text test
   Future<void> requestTextResponse(String message) async {
     final res = await _api.sendMessage(
       message: message,
