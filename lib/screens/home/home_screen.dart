@@ -15,17 +15,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
 
-  @override
-  void initState() {
-    super.initState();
 
-    /// Auto-launch voice screen after a short delay
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 200), () {
-        Navigator.pushNamed(context, Routes.voice);
-      });
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,24 +84,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           icon: Icons.chat_bubble_outline,
                           onTap: () => Navigator.pushNamed(context, Routes.chat),
                         ),
-                        _FeatureButton(
-                          title: "Voice",
-                          icon: Icons.mic_none,
-                          onTap: () =>
-                              Navigator.pushNamed(context, Routes.voice),
-                        ),
+                        
                         _FeatureButton(
                           title: "Memory",
                           icon: Icons.storage_rounded,
                           onTap: () =>
                               Navigator.pushNamed(context, Routes.memory),
                         ),
-                        _FeatureButton(
-                          title: "Settings",
-                          icon: Icons.settings_outlined,
-                          onTap: () =>
-                              Navigator.pushNamed(context, Routes.settings),
-                        ),
+                        
                         _FeatureButton(
                           title: "Diagnostics",
                           icon: Icons.developer_board_outlined,

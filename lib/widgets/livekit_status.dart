@@ -17,7 +17,7 @@ class LiveKitStatus extends StatelessWidget {
       label = "Connected";
     } else if (voice.isConnecting) {
       color = Colors.orangeAccent;
-      label = "Connecting...";
+      label = "Connecting…";
     } else {
       color = Colors.redAccent;
       label = "Offline";
@@ -32,20 +32,13 @@ class LiveKitStatus extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.circle,
-            size: 10,
-            color: color,
-          ),
+          Icon(Icons.circle, size: 10, color: color),
           const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          )
+          Text(label,
+              style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500)),
         ],
       ),
     );

@@ -7,43 +7,41 @@ class LiveKitService {
 
   Room? room;
   LocalParticipant? localParticipant;
+  bool micEnabled = false;
 
-  String livekitUrl = "";
-  String livekitToken = "";
-
-  void Function(bool connected)? onConnectionChange;
+  void Function(bool)? onConnectionChange;
   void Function()? onAgentSpeaking;
   void Function()? onAgentStopped;
 
-  bool _micEnabled = false;
-  bool get micEnabled => _micEnabled;
-
-  void setConfig({required String url, required String token}) {
-    livekitUrl = url;
-    livekitToken = token;
-  }
-
-  Future<void> connect() async {
+  Future<void> connect({
+    required String url,
+    required String token,
+  }) async {
     if (room != null) return;
 
     room = Room();
-    await room!.connect(livekitUrl, livekitToken);
+
+    await room!.connect(
+      url,
+      token,
+    );
 
     localParticipant = room!.localParticipant;
 
-    room!.on<TrackSubscribedEvent>((e) {
-      if (e.track.kind == TrackType.AUDIO) {
-        e.track.start();
+    room!.events.listen((event) {
+      if (event is TrackSubscribedEvent &&
+          event.track.kind == TrackType.AUDIO) {
+        event.track.start();
         onAgentSpeaking?.call();
       }
-    });
 
-    room!.on<TrackUnsubscribedEvent>((_) {
-      onAgentStopped?.call();
-    });
+      if (event is TrackUnsubscribedEvent) {
+        onAgentStopped?.call();
+      }
 
-    room!.on<RoomDisconnectedEvent>((_) {
-      onConnectionChange?.call(false);
+      if (event is RoomDisconnectedEvent) {
+        onConnectionChange?.call(false);
+      }
     });
 
     onConnectionChange?.call(true);
@@ -51,7 +49,12 @@ class LiveKitService {
 
   Future<void> toggleMic() async {
     if (localParticipant == null) return;
-    _micEnabled = !_micEnabled;
-    await localParticipant!.setMicrophoneEnabled(_micEnabled);
+    micEnabled = !micEnabled;
+    await localParticipant!.setMicrophoneEnabled(micEnabled);
+  }
+
+  void dispose() {
+    room?.disconnect();
+    room = null;
   }
 }

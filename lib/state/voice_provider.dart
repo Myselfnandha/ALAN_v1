@@ -1,109 +1,81 @@
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import '../services/livekit_service.dart';
-import '../services/api_service.dart';
 
 class VoiceProvider extends ChangeNotifier {
   final LiveKitService _lk = LiveKitService();
-  final ApiService _api = ApiService();
 
   bool isConnected = false;
   bool isListening = false;
   bool agentSpeaking = false;
 
-  String lastResponse = "";
+  String lastResponse = "Tap the mic to talk";
 
-  // Camera feed (Web)
   html.VideoElement? cameraElement;
   bool cameraReady = false;
 
+  // 🔐 TEMP (replace later with backend token)
+  final String livekitUrl = "wss://YOUR_PROJECT.livekit.cloud";
+  final String livekitToken = "PASTE_JWT_TOKEN";
+
   VoiceProvider() {
-    // LiveKit connection state
-    _lk.onConnectionChange = (connected) {
-      isConnected = connected;
-      if (!connected) {
-        isListening = false;
-        agentSpeaking = false;
-      }
+    _lk.onConnectionChange = (c) {
+      isConnected = c;
+      if (!c) isListening = false;
       notifyListeners();
     };
 
-    // Agent audio state
     _lk.onAgentSpeaking = () {
       agentSpeaking = true;
-      lastResponse = "ALAN is speaking…";
+      lastResponse = "ALAN speaking…";
       notifyListeners();
     };
 
     _lk.onAgentStopped = () {
       agentSpeaking = false;
-      lastResponse = "";
+      lastResponse = "Listening…";
       notifyListeners();
     };
 
-    _initCameraFeed();
+    _initCamera();
   }
 
-  // ----------------------------------------------------------
-  // CAMERA FEED (Web only)
-  // ----------------------------------------------------------
-  Future<void> _initCameraFeed() async {
+  Future<void> _initCamera() async {
     try {
       cameraElement = html.VideoElement()
         ..autoplay = true
         ..muted = true
         ..style.objectFit = "cover";
 
-      final stream = await html.window.navigator.mediaDevices!
-          .getUserMedia({"video": true, "audio": false});
+      final stream =
+          await html.window.navigator.mediaDevices!.getUserMedia({
+        "video": true,
+        "audio": false,
+      });
 
       cameraElement!.srcObject = stream;
       cameraReady = true;
-      notifyListeners();
     } catch (_) {
       cameraReady = false;
-      notifyListeners();
     }
-  }
-
-  // ----------------------------------------------------------
-  // LiveKit config
-  // ----------------------------------------------------------
-  void setConfig({
-    required String url,
-    required String token,
-  }) {
-    _lk.setConfig(url: url, token: token);
+    notifyListeners();
   }
 
   Future<void> connect() async {
-    if (!isConnected) {
-      await _lk.connect();
-    }
+    if (isConnected) return;
+    await _lk.connect(url: livekitUrl, token: livekitToken);
   }
 
-  // ----------------------------------------------------------
-  // REAL mic control (NO mock backend loop)
-  // ----------------------------------------------------------
   Future<void> toggleMic() async {
     if (!isConnected) await connect();
-
     await _lk.toggleMic();
     isListening = _lk.micEnabled;
-
     notifyListeners();
   }
 
-  // ----------------------------------------------------------
-  // Text-only request (kept intentionally)
-  // ----------------------------------------------------------
-  Future<void> requestTextResponse(String message) async {
-    final res = await _api.sendMessage(
-      message: message,
-      sessionId: "voice-session",
-    );
-
-    lastResponse = res["text"] ?? "";
-    notifyListeners();
+  @override
+  void dispose() {
+    _lk.dispose();
+    super.dispose();
   }
 }
